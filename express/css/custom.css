@@ -1,0 +1,139 @@
+/* Connect fonts */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Source+Sans+Pro:wght@300;400;600&display=swap');
+
+/* Paragraph styles */
+p {
+    font-family: 'Source Sans Pro', sans-serif;
+    font-size: 18px;
+    color: #2c3e50;
+    line-height: 1.8;
+    text-align: justify;
+    margin: 20px 0;
+}
+
+/* Headers */
+h2.w3-wide {
+    font-family: 'Playfair Display', serif !important;
+    font-weight: 700 !important;
+    letter-spacing: 3px !important;
+    color: #34495e !important;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1) !important;
+    text-align: center !important;
+}
+
+/* Section containers */
+
+.w3-container.w3-content {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
+    border-radius: 12px !important;
+    margin: 20px auto !important;
+    background: rgba(255,255,255,0.95) !important;
+}
+
+/* Buttons */
+.w3-button {
+    border-radius: 25px !important;
+    transition: all 0.3s ease !important;
+    font-family: 'Source Sans Pro', sans-serif !important;
+    font-weight: 600 !important;
+    letter-spacing: 1px !important;
+}
+
+.w3-button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important;
+}
+
+/* Styles for div */
+div.w3-third {
+    transition: transform 0.3s ease !important;
+    border-radius: 8px !important;
+}
+
+div.w3-third:hover {
+    transform: scale(1.02) !important;
+}
+
+/* Styles for ul */
+ul.w3-ul {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%) !important;
+    border-radius: 15px !important;
+    border: 2px solid #e0e6ed !important;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
+}
+
+/* Styles for li */
+li.w3-padding {
+    font-family: 'Source Sans Pro', sans-serif !important;
+    font-size: 16px !important;
+    color: #2c3e50 !important;
+    border-bottom: 1px solid rgba(255,255,255,0.3) !important;
+    transition: background-color 0.3s ease !important;
+}
+
+li.w3-padding:hover {
+    background-color: rgba(255,255,255,0.2) !important;
+}
+
+/* Styles for img */
+img {
+    border-radius: 12px !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+}
+
+img:hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2) !important;
+}
+
+/* Pulse animation for headers */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+h2.w3-wide {
+    animation: pulse 3s infinite ease-in-out;
+}
+
+/* Image appearance animation */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+img {
+    animation: fadeInUp 1s ease-out;
+}
+
+/* Ripple effect animation for buttons */
+@keyframes ripple {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+/* More noticeable animation for images */
+img {
+    animation: slideInFromBottom 1.5s ease-out;
+}
+
+@keyframes slideInFromBottom {
+    0% {
+        opacity: 0;
+        transform: translateY(100px) scale(0.8);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
