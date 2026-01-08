@@ -21,7 +21,7 @@ git checkout Lab1
 ```
 
 Or view it directly on GitHub:
-[https://github.com/alex96lv/TSI-Web-Application-Development-Tools/tree/Lab1](https://github.com/alex96lv/TSI-Web-Application-Development-Tools/tree/Lab1)
+[https://github.com/alex96lv/TSI_Web_Application_Development_Tools/tree/Lab1](https://github.com/alex96lv/TSI_Web_Application_Development_Tools/tree/Lab1)
 
 ---
 
@@ -34,7 +34,7 @@ git checkout Lab2
 ```
 
 Or view it directly on GitHub:
-[https://github.com/alex96lv/TSI-Web-Application-Development-Tools/tree/Lab2](https://github.com/alex96lv/TSI-Web-Application-Development-Tools/tree/Lab2)
+[https://github.com/alex96lv/TSI_Web_Application_Development_Tools/tree/Lab2](https://github.com/alex96lv/TSI_Web_Application_Development_Tools/tree/Lab2)
 
 ---
 
@@ -47,7 +47,7 @@ git checkout Course_Project
 ```
 
 Or view it directly on GitHub:
-[https://github.com/alex96lv/TSI-Web-Application-Development-Tools/tree/Course_Project](https://github.com/alex96lv/TSI-Web-Application-Development-Tools/tree/Course_Project)
+[https://github.com/alex96lv/TSI_Web_Application_Development_Tools/tree/Course_Project](https://github.com/alex96lv/TSI_Web_Application_Development_Tools/tree/Course_Project)
 
 ---
 
