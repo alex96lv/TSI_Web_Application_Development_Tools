@@ -1,0 +1,32 @@
+# Django Core
+Django==5.0.1
+djangorestframework==3.14.0
+
+# MongoDB
+mongoengine==0.28.2
+
+# JWT Authentication
+djangorestframework-simplejwt==5.3.1
+
+# CORS Headers
+django-cors-headers==4.3.1
+
+# Environment variables
+python-decouple==3.8
+
+# Password hashing
+argon2-cffi==23.1.0
+
+# Database driver
+pymongo==4.6.1
+dnspython==2.5.0
+
+# SASS compilation
+libsass==0.23.0
+django-compressor==4.4
+
+# Utilities
+Pillow==10.2.0
+bcrypt==5.0.0
+reportlab==4.0.9
+python-dateutil==2.8.2

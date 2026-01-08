@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theme Test</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script>
+        // Apply theme immediately
+        (function() {
+            const userStr = localStorage.getItem('user');
+            console.log('User from localStorage:', userStr);
+            if (userStr) {
+                const user = JSON.parse(userStr);
+                console.log('Parsed user:', user);
+                console.log('User theme:', user.theme);
+                if (user.theme === 'dark') {
+                    console.log('Applying dark theme to html');
+                    document.documentElement.style.backgroundColor = '#1a202c';
+                }
+            }
+        })();
+    </script>
+</head>
+<body>
+    <div style="padding: 40px;">
+        <h1>Theme Test Page</h1>
+        <p>Current theme status:</p>
+        <div id="theme-info"></div>
+
+        <button onclick="testTheme()">Test Theme</button>
+        <button onclick="toggleTheme()">Toggle Theme</button>
+        <button onclick="showUserData()">Show User Data</button>
+    </div>
+
+    <script src="/static/js/auth.js"></script>
+    <script>
+        function testTheme() {
+            const user = getUser();
+            console.log('User:', user);
+            console.log('User theme:', user?.theme);
+            console.log('Body classes:', document.body.className);
+            console.log('Body classList contains dark-theme:', document.body.classList.contains('dark-theme'));
+
+            const info = document.getElementById('theme-info');
+            info.innerHTML = `
+                <strong>User theme:</strong> ${user?.theme || 'not set'}<br>
+                <strong>Body classes:</strong> ${document.body.className || 'none'}<br>
+                <strong>Has dark-theme class:</strong> ${document.body.classList.contains('dark-theme')}
+            `;
+        }
+
+        function toggleTheme() {
+            const hasClass = document.body.classList.contains('dark-theme');
+            if (hasClass) {
+                document.body.classList.remove('dark-theme');
+                console.log('Removed dark-theme class');
+            } else {
+                document.body.classList.add('dark-theme');
+                console.log('Added dark-theme class');
+            }
+            testTheme();
+        }
+
+        function showUserData() {
+            const userStr = localStorage.getItem('user');
+            console.log('Raw user data:', userStr);
+            alert('User data: ' + userStr);
+        }
+
+        // Run test on load
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, running test...');
+            testTheme();
+        });
+    </script>
+</body>
+</html>

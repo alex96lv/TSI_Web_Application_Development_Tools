@@ -1,0 +1,420 @@
+{% extends "base.html" %}
+{% block title %}Транзакции{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <h1 data-i18n="transactions">Транзакции</h1>
+    <div style="display: flex; gap: 12px;">
+        <button class="btn" onclick="exportCSV()" style="background: #10b981;">📥 <span data-i18n="export_csv">CSV</span></button>
+        <button class="btn" onclick="exportPDF()" style="background: #ef4444;">📄 <span data-i18n="export_pdf">PDF</span></button>
+        <button class="btn" onclick="openAddModal()" data-i18n="add_btn">+ Добавить</button>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom: 24px; padding: 20px;">
+    <h3 style="margin: 0 0 16px 0; font-size: 16px;" data-i18n="filters">Фильтры</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+        <div class="form-group" style="margin: 0;">
+            <label data-i18n="date_range" style="font-size: 14px;">Период</label>
+            <select id="date-range-filter" style="padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb;">
+                <option value="all" data-i18n="filter_all">Все время</option>
+                <option value="7" data-i18n="filter_7days">Последние 7 дней</option>
+                <option value="30" data-i18n="filter_30days">Последние 30 дней</option>
+                <option value="90" data-i18n="filter_90days">Последние 90 дней</option>
+                <option value="365" data-i18n="filter_year">Последний год</option>
+                <option value="custom" data-i18n="filter_custom">Произвольный период</option>
+            </select>
+        </div>
+        <div class="form-group" id="custom-date-start" style="margin: 0; display: none;">
+            <label data-i18n="start_date" style="font-size: 14px;">Начало</label>
+            <input type="date" id="start-date" style="padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb;">
+        </div>
+        <div class="form-group" id="custom-date-end" style="margin: 0; display: none;">
+            <label data-i18n="end_date" style="font-size: 14px;">Конец</label>
+            <input type="date" id="end-date" style="padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb;">
+        </div>
+        <div class="form-group" style="margin: 0;">
+            <label data-i18n="type" style="font-size: 14px;">Тип</label>
+            <select id="type-filter" style="padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb;">
+                <option value="all" data-i18n="filter_all">Все</option>
+                <option value="income" data-i18n="income">Доход</option>
+                <option value="expense" data-i18n="expense">Расход</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th data-i18n="date">Дата</th>
+                <th data-i18n="type">Тип</th>
+                <th data-i18n="category">Категория</th>
+                <th data-i18n="description">Описание</th>
+                <th data-i18n="amount">Сумма</th>
+                <th data-i18n="actions">Действия</th>
+            </tr>
+        </thead>
+        <tbody id="transactions-list"></tbody>
+    </table>
+</div>
+
+<div id="addModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 data-i18n="add_transaction">Добавить транзакцию</h2>
+            <span class="close" id="closeModalBtn">&times;</span>
+        </div>
+        <form id="transactionForm">
+            <div class="form-group">
+                <label data-i18n="type">Тип</label>
+                <select id="type" required>
+                    <option value="expense" data-i18n="expense">Расход</option>
+                    <option value="income" data-i18n="income">Доход</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label data-i18n="category">Категория</label>
+                <select id="category_id" required></select>
+            </div>
+            <div class="form-group">
+                <label data-i18n="amount">Сумма</label>
+                <input type="number" id="amount" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label data-i18n="description">Описание</label>
+                <input type="text" id="description">
+            </div>
+            <div class="form-group">
+                <label data-i18n="date">Дата</label>
+                <input type="datetime-local" id="date" required>
+            </div>
+            <button type="submit" class="btn btn-full" data-i18n="save">Сохранить</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let categories = [];
+let currentFilters = {};
+
+// Export to CSV function
+async function exportCSV() {
+    const params = new URLSearchParams(currentFilters);
+    // Add current language
+    params.append('lang', getCurrentLanguage());
+    const token = localStorage.getItem('accessToken');
+    const url = `/api/transactions/export/csv/?${params.toString()}`;
+
+    // Create a temporary link and trigger download
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('Authorization', `Bearer ${token}`);
+
+    // For authenticated download, use fetch and create blob
+    const response = await fetch(url, {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    link.href = downloadUrl;
+    link.download = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrl);
+}
+
+// Export to PDF function
+async function exportPDF() {
+    const params = new URLSearchParams(currentFilters);
+    // Add current language
+    params.append('lang', getCurrentLanguage());
+    const token = localStorage.getItem('accessToken');
+    const url = `/api/transactions/export/pdf/?${params.toString()}`;
+
+    const response = await fetch(url, {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `transactions_report_${new Date().toISOString().split('T')[0]}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrl);
+}
+
+async function loadTransactions() {
+    try {
+        console.log('Loading transactions...');
+        // Build query params from filters
+        const params = new URLSearchParams();
+
+        if (currentFilters.type && currentFilters.type !== 'all') {
+            params.append('type', currentFilters.type);
+        }
+        if (currentFilters.start_date && currentFilters.start_date !== '') {
+            params.append('start_date', currentFilters.start_date);
+        }
+        if (currentFilters.end_date && currentFilters.end_date !== '') {
+            params.append('end_date', currentFilters.end_date);
+        }
+
+        const queryString = params.toString();
+        const url = `/transactions/${queryString ? '?' + queryString : ''}`;
+
+        console.log('Loading transactions from:', url);
+
+        const response = await apiRequest(url);
+        console.log('Response status:', response?.status);
+        if (!response || !response.ok) {
+            const errorText = await response?.text();
+            console.error('Failed to load transactions:', errorText);
+            throw new Error('Failed to load transactions');
+        }
+        const transactions = await response.json();
+        console.log('Transactions loaded:', transactions);
+        console.log('Transactions count:', transactions ? transactions.length : 0);
+
+        const user = getUser();
+        const tbody = document.getElementById('transactions-list');
+
+        if (!transactions || transactions.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">${t('no_transactions')}</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = transactions.map(trans => {
+            console.log('Processing transaction:', trans);
+            return `
+                <tr>
+                    <td>${formatDate(trans.date)}</td>
+                    <td>${trans.type === 'income' ? t('income_label') : t('expense_label')}</td>
+                    <td>${trans.category.icon} ${getCategoryName(trans.category)}</td>
+                    <td>${trans.description || '-'}</td>
+                    <td class="${trans.type === 'income' ? 'text-success' : 'text-danger'}">
+                        ${formatCurrency(trans.amount, user.currency)}
+                    </td>
+                    <td>
+                        <button class="btn btn-danger" style="padding: 4px 12px;" onclick="deleteTransaction('${trans.id}')">${t('delete')}</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        console.log('Transactions rendered successfully');
+    } catch (error) {
+        console.error('Error loading transactions:', error);
+        const tbody = document.getElementById('transactions-list');
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: red;">${t('error_loading')}: ${error.message}</td></tr>`;
+    }
+}
+
+async function loadCategories() {
+    try {
+        categories = await API.getCategories();
+        console.log('Loaded categories:', categories);
+        if (!categories || categories.length === 0) {
+            console.error('No categories returned from API');
+        }
+        updateCategorySelect('expense');
+    } catch (error) {
+        console.error('Error loading categories:', error);
+    }
+}
+
+function updateCategorySelect(type) {
+    const select = document.getElementById('category_id');
+    const filtered = categories.filter(c => c.type === type);
+    console.log(`Updating category select for type ${type}:`, filtered);
+    select.innerHTML = filtered.map(c => `<option value="${c.id}">${c.icon} ${getCategoryName(c)}</option>`).join('');
+    if (filtered.length === 0) {
+        select.innerHTML = `<option disabled>${t('no_categories')}</option>`;
+    }
+}
+
+// Wait for DOM to be ready before adding event listener to type selector
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('type').addEventListener('change', (e) => {
+            updateCategorySelect(e.target.value);
+        });
+    });
+} else {
+    document.getElementById('type').addEventListener('change', (e) => {
+        updateCategorySelect(e.target.value);
+    });
+}
+
+async function openAddModal() {
+    console.log('openAddModal called');
+    // Ensure categories are loaded before opening modal
+    if (categories.length === 0) {
+        await loadCategories();
+    }
+    updateCategorySelect('expense');
+    const modal = document.getElementById('addModal');
+    console.log('Modal classes before open:', modal.className);
+    console.log('Modal computed display before:', window.getComputedStyle(modal).display);
+    // Clear inline style to allow CSS class to work
+    modal.style.display = '';
+    modal.classList.add('active');
+    console.log('Modal classes after open:', modal.className);
+    console.log('Modal computed display after:', window.getComputedStyle(modal).display);
+    document.getElementById('date').value = new Date().toISOString().slice(0, 16);
+}
+
+function closeModal() {
+    console.log('closeModal called');
+    const modal = document.getElementById('addModal');
+    console.log('Modal element:', modal);
+    console.log('Modal inline style before:', modal.style.display);
+    console.log('Modal classes before:', modal.className);
+    console.log('Modal has active class:', modal.classList.contains('active'));
+
+    // Remove active class
+    modal.classList.remove('active');
+
+    // Force display none to ensure it closes
+    modal.style.display = 'none';
+
+    console.log('Modal classes after:', modal.className);
+    console.log('Modal inline style after:', modal.style.display);
+    console.log('Modal has active class after:', modal.classList.contains('active'));
+
+    document.getElementById('transactionForm').reset();
+}
+
+document.getElementById('transactionForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    try {
+        const data = {
+            type: document.getElementById('type').value,
+            category_id: document.getElementById('category_id').value,
+            amount: parseFloat(document.getElementById('amount').value),
+            description: document.getElementById('description').value,
+            date: new Date(document.getElementById('date').value).toISOString()
+        };
+
+        console.log('Submitting transaction:', data);
+
+        const result = await API.createTransaction(data);
+
+        if (result) {
+            console.log('Transaction created successfully:', result);
+            alert(t('transaction_added'));
+            closeModal();
+            loadTransactions();
+        } else {
+            console.error('Failed to create transaction - no result');
+            alert(t('error_adding_transaction'));
+        }
+    } catch (error) {
+        console.error('Error creating transaction:', error);
+        alert(t('error_adding_transaction') + ': ' + error.message);
+    }
+});
+
+async function deleteTransaction(id) {
+    if (confirm(t('confirm_delete_transaction'))) {
+        await API.deleteTransaction(id);
+        loadTransactions();
+    }
+}
+
+// Filter handlers
+function applyDateFilter() {
+    const dateRange = document.getElementById('date-range-filter').value;
+    const today = new Date();
+
+    if (dateRange === 'custom') {
+        document.getElementById('custom-date-start').style.display = 'block';
+        document.getElementById('custom-date-end').style.display = 'block';
+        currentFilters.start_date = document.getElementById('start-date').value;
+        currentFilters.end_date = document.getElementById('end-date').value;
+    } else {
+        document.getElementById('custom-date-start').style.display = 'none';
+        document.getElementById('custom-date-end').style.display = 'none';
+
+        if (dateRange === 'all') {
+            delete currentFilters.start_date;
+            delete currentFilters.end_date;
+        } else {
+            const days = parseInt(dateRange);
+            const startDate = new Date(today);
+            startDate.setDate(today.getDate() - days);
+            currentFilters.start_date = startDate.toISOString().split('T')[0];
+            currentFilters.end_date = today.toISOString().split('T')[0];
+        }
+    }
+    loadTransactions();
+}
+
+function applyTypeFilter() {
+    const type = document.getElementById('type-filter').value;
+    if (type === 'all') {
+        delete currentFilters.type;
+    } else {
+        currentFilters.type = type;
+    }
+    loadTransactions();
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM Content Loaded - Initializing transactions page');
+
+    // Ensure modal is hidden on page load
+    const modal = document.getElementById('addModal');
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+
+    // Add filter event listeners
+    document.getElementById('date-range-filter').addEventListener('change', applyDateFilter);
+    document.getElementById('type-filter').addEventListener('change', applyTypeFilter);
+    document.getElementById('start-date').addEventListener('change', applyDateFilter);
+    document.getElementById('end-date').addEventListener('change', applyDateFilter);
+
+    // Load categories and transactions
+    loadCategories();
+    loadTransactions();
+
+    // Add event listener for close button
+    const closeBtn = document.getElementById('closeModalBtn');
+    console.log('Close button element:', closeBtn);
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            console.log('Close button clicked');
+            closeModal();
+        });
+    } else {
+        console.error('Close button not found!');
+    }
+
+    // Close modal when clicking outside
+    console.log('Modal element on init:', modal);
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target.id === 'addModal') {
+                console.log('Clicked outside modal');
+                closeModal();
+            }
+        });
+    } else {
+        console.error('Modal not found!');
+    }
+});
+</script>
+{% endblock %}

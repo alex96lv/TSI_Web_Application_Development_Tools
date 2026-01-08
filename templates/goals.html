@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Цели{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; margin-bottom: 24px;">
+    <h1 data-i18n="goals">Цели сбережений</h1>
+    <button class="btn" onclick="openAddModal()" data-i18n="add_btn">+ Добавить</button>
+</div>
+<div id="goals-list"></div>
+
+<div id="addModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 data-i18n="create_goal">Создать цель</h2>
+            <span class="close" id="closeModalBtn">&times;</span>
+        </div>
+        <form id="goalForm">
+            <div class="form-group">
+                <label data-i18n="goal_name">Название</label>
+                <input type="text" id="name" required>
+            </div>
+            <div class="form-group">
+                <label data-i18n="target_amount">Целевая сумма</label>
+                <input type="number" id="target_amount" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label data-i18n="current_amount">Текущая сумма</label>
+                <input type="number" id="current_amount" step="0.01" value="0">
+            </div>
+            <div class="form-group">
+                <label data-i18n="deadline">Срок достижения</label>
+                <input type="date" id="deadline">
+            </div>
+            <div class="form-group">
+                <label data-i18n="description">Описание</label>
+                <textarea id="description"></textarea>
+            </div>
+            <button type="submit" class="btn btn-full" data-i18n="save">Сохранить</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadGoals() {
+    const goals = await API.getGoals('active');
+    const container = document.getElementById('goals-list');
+    const user = getUser();
+    const currency = user?.currency || 'USD';
+
+    container.innerHTML = goals.map(g => {
+        const percentage = g.progress_percentage || 0;
+        const progressClass = percentage >= 100 ? 'success' : percentage >= 70 ? 'warning' : '';
+
+        return `
+            <div class="goal-item">
+                <div class="budget-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="margin: 0;">${g.name}</h3>
+                    <button class="btn btn-danger" style="padding: 6px 12px;" onclick="deleteGoal('${g.id}')" title="${t('delete')}">
+                        🗑️ ${t('delete')}
+                    </button>
+                </div>
+
+                ${g.description ? `<p style="margin-bottom: 12px; color: #6b7280;">${g.description}</p>` : ''}
+
+                <div style="margin-bottom: 8px; display: flex; justify-content: space-between; font-size: 14px;">
+                    <span>${t('current_amount')}: <strong>${formatCurrency(g.current_amount, currency)}</strong></span>
+                    <span>${t('target_amount')}: <strong>${formatCurrency(g.target_amount, currency)}</strong></span>
+                </div>
+
+                <div style="margin-bottom: 8px;">
+                    <div style="font-size: 13px; color: #6b7280; margin-bottom: 4px;">
+                        ${t('progress')}: ${percentage.toFixed(1)}%
+                        (${t('remaining')}: ${formatCurrency(g.remaining_amount, currency)})
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill ${progressClass}" style="width: ${Math.min(percentage, 100)}%"></div>
+                    </div>
+                </div>
+
+                ${g.deadline ? `
+                    <div style="font-size: 12px; color: #9ca3af;">
+                        ${t('deadline')}: ${formatDate(g.deadline)}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('') || `<p>${t('no_goals')}</p>`;
+}
+
+async function openAddModal() {
+    const modal = document.getElementById('addModal');
+    // Clear inline style to allow CSS class to work
+    modal.style.display = '';
+    modal.classList.add('active');
+}
+
+function closeModal() {
+    const modal = document.getElementById('addModal');
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+    document.getElementById('goalForm').reset();
+}
+
+async function deleteGoal(id) {
+    if (confirm(t('confirm_delete_goal'))) {
+        await API.deleteGoal(id);
+        loadGoals();
+    }
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    // Ensure modal is hidden on page load
+    const modal = document.getElementById('addModal');
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+
+    loadGoals();
+
+    // Add event listener for close button
+    const closeBtn = document.getElementById('closeModalBtn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeModal);
+    }
+
+    // Close modal when clicking outside
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target.id === 'addModal') {
+                closeModal();
+            }
+        });
+    }
+
+    // Form submit handler
+    document.getElementById('goalForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const deadlineValue = document.getElementById('deadline').value;
+        const data = {
+            name: document.getElementById('name').value,
+            target_amount: parseFloat(document.getElementById('target_amount').value),
+            current_amount: parseFloat(document.getElementById('current_amount').value),
+            description: document.getElementById('description').value,
+            deadline: deadlineValue ? new Date(deadlineValue).toISOString() : null
+        };
+        await API.createGoal(data);
+        closeModal();
+        loadGoals();
+    });
+});
+</script>
+{% endblock %}

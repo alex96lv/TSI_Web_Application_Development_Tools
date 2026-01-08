@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Transactions</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Debug: Transactions Test</h1>
+
+        <div class="card">
+            <h2>Test Results</h2>
+            <div id="results"></div>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
+            <h2>Raw API Response</h2>
+            <pre id="raw-response" style="background: #f5f5f5; padding: 16px; overflow: auto; max-height: 400px;"></pre>
+        </div>
+    </div>
+
+    <script src="/static/js/auth.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/i18n.js"></script>
+    <script>
+        const results = document.getElementById('results');
+        const rawResponse = document.getElementById('raw-response');
+
+        async function runTests() {
+            results.innerHTML = '<p>Running tests...</p>';
+
+            try {
+                // Test 1: Check if user is logged in
+                const user = getUser();
+                if (!user) {
+                    results.innerHTML += '<p>❌ No user logged in. Please login first.</p>';
+                    return;
+                }
+                results.innerHTML += `<p>✓ User logged in: ${user.email}</p>`;
+
+                // Test 2: Check if API is accessible
+                results.innerHTML += '<p>Testing API...</p>';
+
+                // Test 3: Fetch transactions
+                const transactions = await API.getTransactions();
+                rawResponse.textContent = JSON.stringify(transactions, null, 2);
+
+                results.innerHTML += `<p>✓ API Response received: ${transactions.length} transactions</p>`;
+
+                // Test 4: Check if getCategoryName function exists
+                if (typeof getCategoryName === 'function') {
+                    results.innerHTML += '<p>✓ getCategoryName function exists</p>';
+
+                    if (transactions.length > 0) {
+                        const testCat = transactions[0].category;
+                        const catName = getCategoryName(testCat);
+                        results.innerHTML += `<p>✓ getCategoryName test: "${catName}"</p>`;
+                        results.innerHTML += `<p>  - Has translations: ${!!testCat.name_translations}</p>`;
+                        results.innerHTML += `<p>  - Translations: ${JSON.stringify(testCat.name_translations)}</p>`;
+                    }
+                } else {
+                    results.innerHTML += '<p>❌ getCategoryName function NOT found</p>';
+                }
+
+                // Test 5: Display transactions
+                if (transactions.length === 0) {
+                    results.innerHTML += '<p>⚠️ No transactions found in database</p>';
+                } else {
+                    results.innerHTML += '<h3>Transactions:</h3>';
+                    transactions.forEach((t, i) => {
+                        results.innerHTML += `
+                            <div style="margin: 10px 0; padding: 10px; background: #f9f9f9; border-left: 3px solid #6366f1;">
+                                <strong>#${i + 1}</strong><br>
+                                Type: ${t.type}<br>
+                                Amount: ${t.amount}<br>
+                                Category: ${t.category ? t.category.name : 'N/A'}<br>
+                                Has name_translations: ${t.category && t.category.name_translations ? 'Yes' : 'No'}<br>
+                                Date: ${t.date}
+                            </div>
+                        `;
+                    });
+                }
+
+            } catch (error) {
+                results.innerHTML += `<p>❌ Error: ${error.message}</p>`;
+                rawResponse.textContent = error.stack;
+                console.error('Test error:', error);
+            }
+        }
+
+        // Run tests on page load
+        runTests();
+    </script>
+</body>
+</html>

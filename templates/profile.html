@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+{% block title %}Профиль{% endblock %}
+{% block content %}
+<h1 data-i18n="profile">Профиль</h1>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 1200px;">
+    <!-- Left column -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+        <!-- Profile settings card -->
+        <div class="card">
+            <h2 data-i18n="profile_settings">Настройки профиля</h2>
+            <form id="profileForm">
+                <div class="form-group">
+                    <label data-i18n="email">Email</label>
+                    <input type="email" id="email" readonly>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="first_name">Имя</label>
+                    <input type="text" id="first_name">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="last_name">Фамилия</label>
+                    <input type="text" id="last_name">
+                </div>
+                <div class="form-group">
+                    <label data-i18n="currency">Валюта</label>
+                    <select id="currency">
+                        <option value="USD" data-i18n="currency_usd">$ Доллар</option>
+                        <option value="EUR" data-i18n="currency_eur">€ Евро</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="theme">Тема</label>
+                    <select id="theme">
+                        <option value="light" data-i18n="light">Светлая</option>
+                        <option value="dark" data-i18n="dark">Тёмная</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-full" data-i18n="save">Сохранить</button>
+            </form>
+        </div>
+
+        <!-- Password change card -->
+        <div class="card">
+            <h2 data-i18n="change_password">Смена пароля</h2>
+            <form id="passwordForm">
+                <div class="form-group">
+                    <label data-i18n="current_password">Текущий пароль</label>
+                    <input type="password" id="old_password" required>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="form-group">
+                        <label data-i18n="new_password">Новый пароль</label>
+                        <input type="password" id="new_password" required minlength="8">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="confirm_new_password">Повтор пароля</label>
+                        <input type="password" id="new_password_confirm" required minlength="8">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-full" data-i18n="change_password_btn">Изменить пароль</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right column - Category management -->
+    <div class="card">
+        <h2 data-i18n="manage_categories">Управление категориями</h2>
+
+        <!-- Add category form -->
+        <form id="categoryForm" style="margin-bottom: 20px;">
+            <div class="form-group">
+                <label data-i18n="category_name">Название категории</label>
+                <input type="text" id="category_name" required>
+            </div>
+
+            <div class="form-group">
+                <label data-i18n="category_type">Тип</label>
+                <select id="category_type">
+                    <option value="expense" data-i18n="expense">Расход</option>
+                    <option value="income" data-i18n="income">Доход</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label data-i18n="category_icon">Выберите иконку</label>
+                <div id="icon-selector" style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; margin-top: 8px;">
+                    <!-- Icons will be populated by JavaScript -->
+                </div>
+                <input type="hidden" id="selected_icon" required>
+            </div>
+
+            <button type="submit" class="btn btn-full" data-i18n="add_category">Добавить категорию</button>
+        </form>
+
+        <!-- Categories list -->
+        <div id="user-categories-list">
+            <h3 data-i18n="your_categories" style="font-size: 16px; margin-bottom: 12px;">Ваши категории</h3>
+            <div id="categories-container"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Wait for page to load before accessing functions from auth.js
+document.addEventListener('DOMContentLoaded', function() {
+    const user = getUser();
+    document.getElementById('email').value = user.email;
+    document.getElementById('first_name').value = user.first_name || '';
+    document.getElementById('last_name').value = user.last_name || '';
+    document.getElementById('currency').value = user.currency || 'USD';
+    document.getElementById('theme').value = user.theme || 'light';
+
+    // Theme is already applied by auth.js initTheme(), no need to apply again
+
+    // Apply theme immediately when changed in selector (preview)
+    document.getElementById('theme').addEventListener('change', function(e) {
+        applyTheme(e.target.value);
+    });
+
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+            first_name: document.getElementById('first_name').value,
+            last_name: document.getElementById('last_name').value,
+            currency: document.getElementById('currency').value,
+            theme: document.getElementById('theme').value
+        };
+
+        const response = await apiRequest('/auth/update/', {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+
+        if (response && response.ok) {
+            const result = await response.json();
+            localStorage.setItem('user', JSON.stringify(result.user));
+
+            // Apply theme immediately without page reload
+            applyTheme(result.user.theme);
+
+            alert(t('profile_updated'));
+        }
+    });
+
+    // Handle password change form
+    document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const oldPassword = document.getElementById('old_password').value;
+        const newPassword = document.getElementById('new_password').value;
+        const newPasswordConfirm = document.getElementById('new_password_confirm').value;
+
+        // Check if new passwords match
+        if (newPassword !== newPasswordConfirm) {
+            alert(t('passwords_dont_match'));
+            return;
+        }
+
+        // Check minimum password length
+        if (newPassword.length < 8) {
+            alert(t('password_min_length'));
+            return;
+        }
+
+        const data = {
+            old_password: oldPassword,
+            new_password: newPassword,
+            new_password_confirm: newPasswordConfirm
+        };
+
+        const response = await apiRequest('/auth/change-password/', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+
+        if (response && response.ok) {
+            const result = await response.json();
+            alert(t('password_changed'));
+
+            // Clear the password form
+            document.getElementById('passwordForm').reset();
+        } else if (response) {
+            const error = await response.json();
+            alert(error.error || t('error_changing_password'));
+        }
+    });
+
+    // Available icons for categories
+    const availableIcons = [
+        '🍔', '🍕', '🍜', '🥗', '🍰', '☕', '🍺', '🍷',
+        '🚗', '🚕', '🚌', '✈️', '🚆', '🚲', '⛽', '🚇',
+        '🏠', '🏢', '🏫', '🏥', '🏪', '🏨', '🏛️', '⛪',
+        '💊', '⚕️', '🩺', '💉', '🏥', '🧘', '🏃', '⚽',
+        '🎮', '🎬', '🎵', '🎸', '🎨', '📚', '🎭', '🎪',
+        '👕', '👗', '👔', '👞', '👜', '💄', '💍', '👓',
+        '📱', '💻', '⌚', '📷', '🎧', '📺', '🖨️', '⌨️',
+        '💼', '📊', '💳', '💸', '🏦', '📊', '📈', '💹',
+        '🎓', '📝', '✏️', '📐', '🔬', '🧪', '🔭', '📚',
+        '⚡', '🔥', '💧', '🌟', '❤️', '🎁', '🛍️', '🔧'
+    ];
+
+    let selectedIcon = null;
+
+    // Populate icon selector
+    const iconSelector = document.getElementById('icon-selector');
+    availableIcons.forEach(icon => {
+        const iconBtn = document.createElement('button');
+        iconBtn.type = 'button';
+        iconBtn.textContent = icon;
+        iconBtn.style.cssText = 'font-size: 24px; padding: 8px; border: 2px solid transparent; border-radius: 6px; cursor: pointer; background: transparent; transition: all 0.2s;';
+        iconBtn.onclick = function() {
+            // Remove selection from all icons
+            document.querySelectorAll('#icon-selector button').forEach(btn => {
+                btn.style.borderColor = 'transparent';
+                btn.style.backgroundColor = 'transparent';
+            });
+            // Select this icon
+            this.style.borderColor = '#6366f1';
+            this.style.backgroundColor = 'rgba(99, 102, 241, 0.1)';
+            selectedIcon = icon;
+            document.getElementById('selected_icon').value = icon;
+        };
+        iconSelector.appendChild(iconBtn);
+    });
+
+    // Load user categories
+    async function loadUserCategories() {
+        const categories = await API.getCategories();
+        const userCategories = categories.filter(c => !c.is_default);
+
+        const container = document.getElementById('categories-container');
+        if (userCategories.length === 0) {
+            container.innerHTML = `<p style="color: #6b7280; font-size: 14px;" data-i18n="no_custom_categories">${t('no_custom_categories')}</p>`;
+            return;
+        }
+
+        container.innerHTML = userCategories.map(cat => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 20px;">${cat.icon}</span>
+                    <span style="font-weight: 500;">${getCategoryName(cat)}</span>
+                    <span style="font-size: 12px; color: #6b7280;">(${cat.type === 'income' ? t('income') : t('expense')})</span>
+                </div>
+                <button class="btn btn-danger" style="padding: 4px 8px; font-size: 12px;" onclick="deleteCategory('${cat.id}')" title="${t('delete')}">
+                    🗑️
+                </button>
+            </div>
+        `).join('');
+    }
+
+    // Handle category form submission
+    document.getElementById('categoryForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const currentLang = getCurrentLanguage();
+        const categoryName = document.getElementById('category_name').value;
+        const categoryType = document.getElementById('category_type').value;
+        const categoryIcon = document.getElementById('selected_icon').value;
+
+        if (!categoryIcon) {
+            alert(t('please_select_icon'));
+            return;
+        }
+
+        const data = {
+            name: categoryName,
+            name_translations: {
+                'ru': categoryName,
+                'en': categoryName,
+                'lv': categoryName
+            },
+            icon: categoryIcon,
+            type: categoryType,
+            color: '#6366f1',
+            is_default: false
+        };
+
+        const response = await apiRequest('/categories/', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+
+        if (response && response.ok) {
+            alert(t('category_added'));
+            document.getElementById('categoryForm').reset();
+            document.getElementById('selected_icon').value = '';
+            selectedIcon = null;
+            // Reset icon selection
+            document.querySelectorAll('#icon-selector button').forEach(btn => {
+                btn.style.borderColor = 'transparent';
+                btn.style.backgroundColor = 'transparent';
+            });
+            loadUserCategories();
+        } else if (response) {
+            const error = await response.json();
+            alert(error.error || t('error_adding_category'));
+        }
+    });
+
+    // Delete category function
+    window.deleteCategory = async function(id) {
+        if (confirm(t('confirm_delete_category'))) {
+            const response = await apiRequest(`/categories/${id}/`, {
+                method: 'DELETE'
+            });
+
+            if (response && response.ok) {
+                alert(t('category_deleted'));
+                loadUserCategories();
+            } else {
+                alert(t('error_deleting_category'));
+            }
+        }
+    };
+
+    // Load categories on page load
+    loadUserCategories();
+});
+</script>
+{% endblock %}

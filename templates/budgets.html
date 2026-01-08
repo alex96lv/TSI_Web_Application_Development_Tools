@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}Бюджеты{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; margin-bottom: 24px;">
+    <h1 data-i18n="budgets">Бюджеты</h1>
+    <button class="btn" onclick="openAddModal()" data-i18n="add_btn">+ Добавить</button>
+</div>
+<div id="budgets-list"></div>
+
+<div id="addModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 data-i18n="create_budget">Создать бюджет</h2>
+            <span class="close" id="closeModalBtn">&times;</span>
+        </div>
+        <form id="budgetForm">
+            <div class="form-group">
+                <label data-i18n="category">Категория</label>
+                <select id="category_id" required></select>
+            </div>
+            <div class="form-group">
+                <label data-i18n="limit">Лимит</label>
+                <input type="number" id="limit_amount" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label data-i18n="period">Период</label>
+                <select id="period">
+                    <option value="weekly" data-i18n="weekly">Неделя</option>
+                    <option value="monthly" selected data-i18n="monthly">Месяц</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-full" data-i18n="save">Сохранить</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadBudgets() {
+    const budgets = await API.getBudgets();
+    const container = document.getElementById('budgets-list');
+    const user = getUser();
+    const currency = user?.currency || 'USD';
+
+    container.innerHTML = budgets.map(b => {
+        const percentage = b.percentage || 0;
+        const progressClass = percentage > 90 ? 'danger' : percentage > 70 ? 'warning' : '';
+        const remaining = b.limit_amount - b.spent;
+
+        return `
+            <div class="budget-item">
+                <div class="budget-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div class="budget-name" style="font-size: 18px; font-weight: 600;">
+                        ${b.category.icon} ${getCategoryName(b.category)}
+                    </div>
+                    <button class="btn btn-danger" style="padding: 6px 12px;" onclick="deleteBudget('${b.id}')" title="${t('delete')}">
+                        🗑️ ${t('delete')}
+                    </button>
+                </div>
+
+                <div style="margin-bottom: 8px; display: flex; justify-content: space-between; font-size: 14px;">
+                    <span>${t('spent')}: <strong>${formatCurrency(b.spent, currency)}</strong></span>
+                    <span>${t('limit')}: <strong>${formatCurrency(b.limit_amount, currency)}</strong></span>
+                </div>
+
+                <div style="margin-bottom: 8px;">
+                    <div style="font-size: 13px; color: #6b7280; margin-bottom: 4px;">
+                        ${t('budget_usage')}: ${percentage.toFixed(1)}%
+                        ${remaining > 0 ? `(${t('remaining')}: ${formatCurrency(remaining, currency)})` : `(${t('overspent')}: ${formatCurrency(Math.abs(remaining), currency)})`}
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill ${progressClass}" style="width: ${Math.min(percentage, 100)}%"></div>
+                    </div>
+                </div>
+
+                <div style="font-size: 12px; color: #9ca3af;">
+                    ${t('period')}: ${b.period === 'weekly' ? t('weekly') : t('monthly')}
+                </div>
+            </div>
+        `;
+    }).join('') || `<p>${t('no_budgets')}</p>`;
+}
+
+let categoriesLoaded = false;
+
+async function loadCategories() {
+    const categories = await API.getCategories('expense');
+    const select = document.getElementById('category_id');
+    select.innerHTML = categories.map(c => `<option value="${c.id}">${c.icon} ${getCategoryName(c)}</option>`).join('');
+    categoriesLoaded = true;
+}
+
+async function openAddModal() {
+    // Load categories only when opening modal for the first time
+    if (!categoriesLoaded) {
+        await loadCategories();
+    }
+    const modal = document.getElementById('addModal');
+    // Clear inline style to allow CSS class to work
+    modal.style.display = '';
+    modal.classList.add('active');
+}
+
+function closeModal() {
+    const modal = document.getElementById('addModal');
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+    document.getElementById('budgetForm').reset();
+}
+
+async function deleteBudget(id) {
+    if (confirm(t('confirm_delete_budget'))) {
+        await API.deleteBudget(id);
+        loadBudgets();
+    }
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    // Ensure modal is hidden on page load
+    const modal = document.getElementById('addModal');
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+
+    loadBudgets();
+
+    // Add event listener for close button
+    const closeBtn = document.getElementById('closeModalBtn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeModal);
+    }
+
+    // Close modal when clicking outside
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target.id === 'addModal') {
+                closeModal();
+            }
+        });
+    }
+
+    // Form submit handler
+    document.getElementById('budgetForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+            category_id: document.getElementById('category_id').value,
+            limit_amount: parseFloat(document.getElementById('limit_amount').value),
+            period: document.getElementById('period').value
+        };
+        await API.createBudget(data);
+        closeModal();
+        loadBudgets();
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="login">Вход</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .auth-form {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .page-title {
+            text-align: center;
+            font-size: 36px;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+
+        .page-title .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .form-group input,
+        .form-group select {
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-full {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s ease;
+        }
+
+        .btn-full:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+        }
+
+        #language-selector {
+            background: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        #language-selector:hover {
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+        }
+    </style>
+</head>
+<body>
+    <div style="position: absolute; top: 20px; right: 20px;">
+        <select id="language-selector" style="padding: 8px 12px; border-radius: 6px; border: 2px solid rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); color: white; font-size: 14px; font-weight: 600; cursor: pointer;">
+            <option value="ru" style="background: #1f2937; color: white;">RU</option>
+            <option value="en" style="background: #1f2937; color: white;">EN</option>
+            <option value="lv" style="background: #1f2937; color: white;">LV</option>
+        </select>
+    </div>
+    <div class="auth-form">
+        <h1 class="page-title">📊 <span class="gradient-text" data-i18n="login">Вход</span></h1>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email" data-i18n="email">Email</label>
+                <input type="email" id="email" name="email" required data-i18n="email_placeholder">
+            </div>
+            <div class="form-group">
+                <label for="password" data-i18n="password">Пароль</label>
+                <input type="password" id="password" name="password" required data-i18n="password_placeholder">
+            </div>
+            <div id="error-message" style="color: #ef4444; margin-bottom: 16px; display: none;"></div>
+            <button type="submit" class="btn btn-full" data-i18n="login_btn">Войти</button>
+            <p class="text-center mt-2">
+                <a href="/password-reset/" style="color: #6366f1; font-size: 14px;" data-i18n="forgot_password">Забыли пароль?</a>
+            </p>
+        </form>
+        <p class="text-center mt-4">
+            <span data-i18n="no_account">Нет аккаунта?</span> <a href="/register/" style="color: #6366f1;" data-i18n="register_btn">Зарегистрироваться</a>
+        </p>
+    </div>
+
+    <script src="/static/js/i18n.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error-message');
+
+            try {
+                const response = await fetch('/api/auth/login/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    localStorage.setItem('accessToken', data.tokens.access);
+                    localStorage.setItem('refreshToken', data.tokens.refresh);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    window.location.href = '/dashboard/';
+                } else {
+                    errorDiv.textContent = data.error || t('error_login');
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = t('error_connection');
+                errorDiv.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

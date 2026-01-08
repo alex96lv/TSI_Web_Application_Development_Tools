@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="register">Регистрация</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .auth-form {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .page-title {
+            text-align: center;
+            font-size: 36px;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+
+        .page-title .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group input,
+        .form-group select {
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            transition: all 0.3s ease;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
+        }
+
+        #language-selector {
+            background: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        #language-selector:hover {
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .security-section {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-left: 4px solid #f59e0b;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 24px 0;
+        }
+
+        .security-section h3 {
+            color: #92400e;
+            margin: 0 0 12px 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div style="position: absolute; top: 20px; right: 20px;">
+        <select id="language-selector" style="padding: 8px 12px; border-radius: 6px; border: 2px solid rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); color: white; font-size: 14px; font-weight: 600; cursor: pointer;">
+            <option value="ru" style="background: #1f2937; color: white;">RU</option>
+            <option value="en" style="background: #1f2937; color: white;">EN</option>
+            <option value="lv" style="background: #1f2937; color: white;">LV</option>
+        </select>
+    </div>
+    <div class="auth-form">
+        <h1 class="page-title">📊 <span class="gradient-text" data-i18n="register">Регистрация</span></h1>
+        <form id="registerForm">
+            <div class="form-group">
+                <label for="email" data-i18n="email">Email</label>
+                <input type="email" id="email" name="email" required data-i18n="email_placeholder">
+            </div>
+            <div class="form-group">
+                <label for="first_name" data-i18n="first_name">Имя</label>
+                <input type="text" id="first_name" name="first_name" data-i18n="first_name_placeholder">
+            </div>
+            <div class="form-group">
+                <label for="last_name" data-i18n="last_name">Фамилия</label>
+                <input type="text" id="last_name" name="last_name" data-i18n="last_name_placeholder">
+            </div>
+            <div class="form-group">
+                <label for="currency" data-i18n="currency">Валюта</label>
+                <select id="currency" name="currency">
+                    <option value="EUR" selected data-i18n="currency_eur_full">€ Евро</option>
+                    <option value="USD" data-i18n="currency_usd_full">$ Доллар</option>
+                </select>
+            </div>
+
+            <div class="security-section">
+                <h3>🔐 <span data-i18n="security_recovery">Восстановление пароля</span></h3>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="security_question" data-i18n="security_question">Секретный вопрос</label>
+                    <input type="text" id="security_question" name="security_question" required data-i18n-placeholder="security_question_placeholder" placeholder="Например: Кличка первого питомца?">
+                    <small style="color: #92400e; font-size: 13px;" data-i18n="security_question_hint">Используется для восстановления пароля</small>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="security_answer" data-i18n="security_answer">Ответ на секретный вопрос</label>
+                    <input type="text" id="security_answer" name="security_answer" required data-i18n="security_answer_placeholder">
+                    <small style="color: #92400e; font-size: 13px;" data-i18n="security_answer_hint">Запомните ответ - он понадобится для восстановления пароля</small>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="password" data-i18n="password">Пароль</label>
+                <input type="password" id="password" name="password" required minlength="8" data-i18n="new_password_placeholder">
+            </div>
+            <div class="form-group">
+                <label for="password_confirm" data-i18n="password_confirm">Подтвердите пароль</label>
+                <input type="password" id="password_confirm" name="password_confirm" required data-i18n="confirm_password_placeholder">
+            </div>
+            <div id="error-message" style="color: #ef4444; margin-bottom: 16px; display: none;"></div>
+            <button type="submit" class="btn btn-success btn-full" data-i18n="register_btn">Зарегистрироваться</button>
+        </form>
+        <p class="text-center mt-4">
+            <span data-i18n="have_account">Уже есть аккаунт?</span> <a href="/login/" style="color: #6366f1;" data-i18n="login_btn">Войти</a>
+        </p>
+    </div>
+
+    <script src="/static/js/i18n.js"></script>
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = {
+                email: document.getElementById('email').value,
+                first_name: document.getElementById('first_name').value,
+                last_name: document.getElementById('last_name').value,
+                currency: document.getElementById('currency').value,
+                security_question: document.getElementById('security_question').value,
+                security_answer: document.getElementById('security_answer').value,
+                password: document.getElementById('password').value,
+                password_confirm: document.getElementById('password_confirm').value
+            };
+            const errorDiv = document.getElementById('error-message');
+
+            try {
+                const response = await fetch('/api/auth/register/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    localStorage.setItem('accessToken', data.tokens.access);
+                    localStorage.setItem('refreshToken', data.tokens.refresh);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    window.location.href = '/dashboard/';
+                } else {
+                    const errors = Object.values(data).flat().join('. ');
+                    errorDiv.textContent = errors;
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = t('error_connection');
+                errorDiv.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

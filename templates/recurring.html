@@ -1,0 +1,690 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+<span data-i18n="recurring_page_title">Повторяющиеся транзакции</span>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 data-i18n="recurring_page_title">🔄 Повторяющиеся транзакции</h1>
+    <button class="btn" onclick="openAddModal()" data-i18n="add_recurring_btn">+ Добавить регулярный платёж</button>
+</div>
+
+<!-- Filters -->
+<div class="filters-container">
+    <h3 data-i18n="filters">🔍 Фильтры</h3>
+    <div class="filter-group">
+        <div class="filter-item">
+            <label data-i18n="type">Тип транзакции</label>
+            <select id="type-filter" onchange="loadRecurringTransactions()">
+                <option value="" data-i18n="filter_all">Все типы</option>
+                <option value="income" data-i18n="income">💰 Доход</option>
+                <option value="expense" data-i18n="expense">💸 Расход</option>
+            </select>
+        </div>
+        <div class="filter-item">
+            <label data-i18n="status">Статус платежа</label>
+            <select id="status-filter" onchange="loadRecurringTransactions()">
+                <option value="" data-i18n="filter_all">Все статусы</option>
+                <option value="true" data-i18n="active">✓ Активные</option>
+                <option value="false" data-i18n="inactive">○ Неактивные</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<!-- Recurring Transactions List -->
+<div id="recurring-list" class="card-grid"></div>
+
+<!-- Add/Edit Modal -->
+<div id="recurringModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2 id="modalTitle" data-i18n="add_recurring_btn">Добавить регулярный платёж</h2>
+
+        <form id="recurringForm">
+            <div class="form-group">
+                <label data-i18n="type">Тип *</label>
+                <select id="type" required>
+                    <option value="expense" data-i18n="expense">Расход</option>
+                    <option value="income" data-i18n="income">Доход</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label data-i18n="category">Категория *</label>
+                <select id="category" required></select>
+            </div>
+
+            <div class="form-group">
+                <label data-i18n="amount">Сумма *</label>
+                <input type="number" id="amount" step="0.01" min="0" required>
+            </div>
+
+            <div class="form-group">
+                <label data-i18n="description">Описание</label>
+                <textarea id="description" rows="3"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label data-i18n="frequency">Периодичность *</label>
+                <select id="frequency" required>
+                    <option value="daily" data-i18n="freq_daily">Ежедневно</option>
+                    <option value="weekly" data-i18n="freq_weekly">Еженедельно</option>
+                    <option value="monthly" data-i18n="freq_monthly">Ежемесячно</option>
+                    <option value="yearly" data-i18n="freq_yearly">Ежегодно</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label data-i18n="interval">Интервал *</label>
+                <input type="number" id="interval" min="1" value="1" required>
+                <small data-i18n="interval_help">Каждые X дней/недель/месяцев/лет</small>
+            </div>
+
+            <div class="form-group">
+                <label data-i18n="start_date">Дата начала *</label>
+                <input type="datetime-local" id="start_date" required>
+            </div>
+
+            <div class="form-group">
+                <label data-i18n="end_date">Дата окончания</label>
+                <input type="datetime-local" id="end_date">
+                <small data-i18n="end_date_help">Оставьте пустым для бессрочного</small>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-full" data-i18n="save_btn">Сохранить</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()" data-i18n="cancel_btn">Отмена</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let categories = [];
+let currentEditId = null;
+
+async function loadCategories() {
+    try {
+        const token = localStorage.getItem('accessToken');
+        const response = await fetch('/api/categories/', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) throw new Error('Failed to load categories');
+
+        categories = await response.json();
+        updateCategorySelect();
+    } catch (error) {
+        console.error('Error loading categories:', error);
+    }
+}
+
+function updateCategorySelect() {
+    const select = document.getElementById('category');
+    const type = document.getElementById('type').value;
+
+    select.innerHTML = '';
+
+    const filteredCategories = categories.filter(c => c.type === type);
+    filteredCategories.forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat.id;
+        option.textContent = `${cat.icon} ${cat.name}`;
+        select.appendChild(option);
+    });
+}
+
+async function loadRecurringTransactions() {
+    try {
+        const token = localStorage.getItem('accessToken');
+        const typeFilter = document.getElementById('type-filter').value;
+        const statusFilter = document.getElementById('status-filter').value;
+
+        let url = '/api/recurring/';
+        const params = [];
+        if (typeFilter) params.push(`type=${typeFilter}`);
+        if (statusFilter) params.push(`is_active=${statusFilter}`);
+        if (params.length > 0) url += '?' + params.join('&');
+
+        const response = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) throw new Error('Failed to load recurring transactions');
+
+        const data = await response.json();
+        displayRecurringTransactions(data);
+    } catch (error) {
+        console.error('Error loading recurring transactions:', error);
+        showNotification('Ошибка загрузки данных', 'error');
+    }
+}
+
+function displayRecurringTransactions(transactions) {
+    const container = document.getElementById('recurring-list');
+
+    if (transactions.length === 0) {
+        container.innerHTML = '<div class="card"><p data-i18n="no_recurring">Нет повторяющихся транзакций</p></div>';
+        return;
+    }
+
+    container.innerHTML = transactions.map(t => `
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
+                <div>
+                    <span style="font-size: 40px;">${t.category?.icon || '💰'}</span>
+                </div>
+                <div style="display: flex; gap: 6px;">
+                    <button class="btn-icon btn-toggle ${!t.is_active ? 'inactive' : ''}" onclick="toggleRecurring('${t.id}')" title="${t.is_active ? 'Деактивировать' : 'Активировать'}">
+                        ${t.is_active ? '✓' : '○'}
+                    </button>
+                    <button class="btn-icon btn-edit" onclick="editRecurring('${t.id}')" title="Редактировать">
+                        ✏️
+                    </button>
+                    <button class="btn-icon btn-danger" onclick="deleteRecurring('${t.id}')" title="Удалить">
+                        🗑️
+                    </button>
+                </div>
+            </div>
+
+            <h3>${t.category?.name || 'Без категории'}</h3>
+            <p class="amount ${t.type}">${t.type === 'income' ? '+' : '-'}${t.amount.toFixed(2)}</p>
+
+            ${t.description ? `<p style="color: #6b7280; margin: 8px 0;">${t.description}</p>` : ''}
+
+            <div style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #e5e7eb;">
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px;">
+                    <div class="info-box">
+                        <div class="info-box-label">Периодичность</div>
+                        <div class="info-box-value">${getFrequencyLabel(t.frequency, t.interval)}</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-box-label">Следующая</div>
+                        <div class="info-box-value">${new Date(t.next_occurrence).toLocaleDateString()}</div>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 13px; color: #6b7280;">
+                        📅 Начало: ${new Date(t.start_date).toLocaleDateString()}
+                        ${t.end_date ? `<br>🏁 Окончание: ${new Date(t.end_date).toLocaleDateString()}` : ''}
+                    </div>
+                    <span class="badge ${t.is_active ? 'badge-success' : 'badge-secondary'}">
+                        ${t.is_active ? 'Активно' : 'Неактивно'}
+                    </span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function getFrequencyLabel(frequency, interval) {
+    const labels = {
+        'daily': 'день',
+        'weekly': 'неделю',
+        'monthly': 'месяц',
+        'yearly': 'год'
+    };
+    return `Каждые ${interval} ${labels[frequency] || frequency}`;
+}
+
+function openAddModal() {
+    currentEditId = null;
+    document.getElementById('modalTitle').textContent = 'Добавить регулярный платёж';
+    document.getElementById('recurringForm').reset();
+
+    // Set default start date to today
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('start_date').value = now.toISOString().slice(0, 16);
+
+    updateCategorySelect();
+    document.getElementById('recurringModal').style.display = 'block';
+}
+
+async function editRecurring(id) {
+    try {
+        const token = localStorage.getItem('accessToken');
+        const response = await fetch(`/api/recurring/${id}/`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) throw new Error('Failed to load recurring transaction');
+
+        const recurring = await response.json();
+        currentEditId = id;
+
+        document.getElementById('modalTitle').textContent = 'Редактировать регулярный платёж';
+        document.getElementById('type').value = recurring.type;
+        updateCategorySelect();
+        document.getElementById('category').value = recurring.category.id;
+        document.getElementById('amount').value = recurring.amount;
+        document.getElementById('description').value = recurring.description || '';
+        document.getElementById('frequency').value = recurring.frequency;
+        document.getElementById('interval').value = recurring.interval;
+
+        // Convert ISO to datetime-local format
+        const startDate = new Date(recurring.start_date);
+        startDate.setMinutes(startDate.getMinutes() - startDate.getTimezoneOffset());
+        document.getElementById('start_date').value = startDate.toISOString().slice(0, 16);
+
+        if (recurring.end_date) {
+            const endDate = new Date(recurring.end_date);
+            endDate.setMinutes(endDate.getMinutes() - endDate.getTimezoneOffset());
+            document.getElementById('end_date').value = endDate.toISOString().slice(0, 16);
+        }
+
+        document.getElementById('recurringModal').style.display = 'block';
+    } catch (error) {
+        console.error('Error loading recurring transaction:', error);
+        showNotification('Ошибка загрузки данных', 'error');
+    }
+}
+
+function closeModal() {
+    document.getElementById('recurringModal').style.display = 'none';
+    currentEditId = null;
+}
+
+document.getElementById('recurringForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const data = {
+        type: document.getElementById('type').value,
+        category: document.getElementById('category').value,
+        amount: parseFloat(document.getElementById('amount').value),
+        description: document.getElementById('description').value,
+        frequency: document.getElementById('frequency').value,
+        interval: parseInt(document.getElementById('interval').value),
+        start_date: new Date(document.getElementById('start_date').value).toISOString(),
+        end_date: document.getElementById('end_date').value ? new Date(document.getElementById('end_date').value).toISOString() : null
+    };
+
+    try {
+        const token = localStorage.getItem('accessToken');
+        const url = currentEditId ? `/api/recurring/${currentEditId}/` : '/api/recurring/';
+        const method = currentEditId ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(JSON.stringify(error));
+        }
+
+        showNotification(currentEditId ? 'Регулярный платёж обновлён' : 'Регулярный платёж создан', 'success');
+        closeModal();
+        loadRecurringTransactions();
+    } catch (error) {
+        console.error('Error saving recurring transaction:', error);
+        showNotification('Ошибка сохранения', 'error');
+    }
+});
+
+async function toggleRecurring(id) {
+    try {
+        const token = localStorage.getItem('accessToken');
+        const response = await fetch(`/api/recurring/${id}/toggle/`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) throw new Error('Failed to toggle recurring transaction');
+
+        showNotification('Статус изменён', 'success');
+        loadRecurringTransactions();
+    } catch (error) {
+        console.error('Error toggling recurring transaction:', error);
+        showNotification('Ошибка изменения статуса', 'error');
+    }
+}
+
+async function deleteRecurring(id) {
+    if (!confirm(t('confirm_delete_recurring'))) return;
+
+    try {
+        const token = localStorage.getItem('accessToken');
+        const response = await fetch(`/api/recurring/${id}/`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) throw new Error('Failed to delete recurring transaction');
+
+        showNotification('Регулярный платёж удалён', 'success');
+        loadRecurringTransactions();
+    } catch (error) {
+        console.error('Error deleting recurring transaction:', error);
+        showNotification('Ошибка удаления', 'error');
+    }
+}
+
+function showNotification(message, type = 'info') {
+    // Simple notification - you can enhance this
+    alert(message);
+}
+
+// Event listeners
+document.getElementById('type').addEventListener('change', updateCategorySelect);
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('recurringModal');
+    if (event.target === modal) {
+        closeModal();
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    loadCategories();
+    loadRecurringTransactions();
+});
+</script>
+
+<style>
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+    margin-top: 20px;
+}
+
+.card-grid .card {
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.card-grid .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+    border-color: #6366f1;
+}
+
+.badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-top: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-success {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #065f46;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+}
+
+.badge-secondary {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    color: #6b7280;
+    box-shadow: 0 2px 8px rgba(107, 114, 128, 0.1);
+}
+
+.btn-icon {
+    padding: 8px 12px;
+    font-size: 18px;
+    min-width: unset;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+    margin-left: 6px;
+}
+
+.btn-icon:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-icon:active {
+    transform: translateY(0);
+}
+
+.btn-toggle {
+    background: #10b981;
+    color: white;
+}
+
+.btn-toggle:hover {
+    background: #059669;
+}
+
+.btn-toggle.inactive {
+    background: #9ca3af;
+}
+
+.btn-toggle.inactive:hover {
+    background: #6b7280;
+}
+
+.btn-edit {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-edit:hover {
+    background: #2563eb;
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+.amount {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 8px 0;
+}
+
+.amount.income {
+    color: #10b981;
+}
+
+.amount.expense {
+    color: #ef4444;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 5% auto;
+    padding: 30px;
+    border-radius: 12px;
+    max-width: 500px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: #000;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 4px;
+    color: #6b7280;
+    font-size: 12px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.btn-secondary {
+    background: #6b7280;
+}
+
+.btn-secondary:hover {
+    background: #4b5563;
+}
+
+/* Info boxes for frequency and next occurrence */
+.info-box {
+    background: #f9fafb;
+    padding: 8px 12px;
+    border-radius: 8px;
+}
+
+.info-box-label {
+    font-size: 11px;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.info-box-value {
+    font-weight: 600;
+    color: #374151;
+}
+
+/* Dark theme support */
+body.dark-theme .info-box {
+    background: #374151 !important;
+}
+
+body.dark-theme .info-box-label {
+    color: #9ca3af !important;
+}
+
+body.dark-theme .info-box-value {
+    color: #e5e7eb !important;
+}
+
+body.dark-theme .card-grid .card {
+    background: #1f2937 !important;
+    border-color: #374151 !important;
+}
+
+body.dark-theme .card-grid .card:hover {
+    border-color: #6366f1 !important;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Filters styling */
+.filters-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.filters-container h3 {
+    color: white;
+    margin-bottom: 16px;
+    font-size: 18px;
+}
+
+.filter-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.filter-item label {
+    display: block;
+    margin-bottom: 8px;
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.filter-item select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.95);
+    color: #374151;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-item select:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+    background: white;
+}
+
+.filter-item select:focus {
+    outline: none;
+    border-color: white;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
+}
+
+body.dark-theme .filters-container {
+    background: linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%);
+}
+
+body.dark-theme .filter-item select {
+    background: #374151;
+    color: #e5e7eb;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-theme .filter-item select:hover {
+    background: #4b5563;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+</style>
+{% endblock %}

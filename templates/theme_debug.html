@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Theme Debug{% endblock %}
+{% block content %}
+<h1>Theme Debug Page</h1>
+
+<div class="card" style="margin-bottom: 20px;">
+    <h2>Debug Info</h2>
+    <div id="debug-info"></div>
+    <button class="btn" onclick="checkTheme()">Check Theme Status</button>
+    <button class="btn" onclick="forceApplyDark()">Force Apply Dark Theme</button>
+    <button class="btn" onclick="forceApplyLight()">Force Apply Light Theme</button>
+</div>
+
+<div class="card">
+    <h2>Test Card</h2>
+    <p>This card should change color based on theme.</p>
+    <p>Light theme: white background</p>
+    <p>Dark theme: dark gray background (#2d3748)</p>
+</div>
+
+<script>
+function checkTheme() {
+    const user = getUser();
+    const hasDarkClass = document.body.classList.contains('dark-theme');
+    const bodyClasses = document.body.className;
+    const theme = window.__THEME__;
+
+    const info = `
+        <strong>User theme from localStorage:</strong> ${user?.theme || 'not set'}<br>
+        <strong>window.__THEME__:</strong> ${theme || 'not set'}<br>
+        <strong>Body has dark-theme class:</strong> ${hasDarkClass}<br>
+        <strong>Body classes:</strong> "${bodyClasses}"<br>
+        <strong>Body background color:</strong> ${getComputedStyle(document.body).backgroundColor}<br>
+        <br>
+        <strong>Card background (computed):</strong> ${getComputedStyle(document.querySelector('.card')).backgroundColor}
+    `;
+
+    document.getElementById('debug-info').innerHTML = info;
+    console.log('Theme debug info:', {
+        userTheme: user?.theme,
+        windowTheme: theme,
+        hasDarkClass,
+        bodyClasses,
+        bodyBg: getComputedStyle(document.body).backgroundColor
+    });
+}
+
+function forceApplyDark() {
+    document.body.classList.add('dark-theme');
+    console.log('Forced dark-theme class added');
+    checkTheme();
+}
+
+function forceApplyLight() {
+    document.body.classList.remove('dark-theme');
+    console.log('Forced dark-theme class removed');
+    checkTheme();
+}
+
+// Auto-check on load
+window.addEventListener('DOMContentLoaded', () => {
+    setTimeout(checkTheme, 500);
+});
+</script>
+{% endblock %}
