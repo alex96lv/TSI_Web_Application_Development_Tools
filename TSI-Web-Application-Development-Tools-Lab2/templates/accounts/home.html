@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Login System{% endblock %}
+
+{% block content %}
+<div class="home-container fade-in">
+    <div class="welcome-card">
+        <h1 class="welcome-title">Welcome to Your Dashboard</h1>
+        <p class="welcome-message">Hello, <strong>{{ user.username }}</strong>! You are successfully logged in.</p>
+
+        <div class="user-info-box">
+            <h3>Your Account Information</h3>
+            <ul>
+                <li><strong>Username:</strong> {{ user.username }}</li>
+                <li><strong>Email:</strong> {{ user.email }}</li>
+                <li><strong>Account created:</strong> {{ user.date_joined|date:"F d, Y" }}</li>
+                <li><strong>Last login:</strong> {{ user.last_login|date:"F d, Y H:i" }}</li>
+            </ul>
+        </div>
+
+        <div class="action-buttons">
+            <a href="{% url 'logout' %}" class="btn btn-danger">Logout</a>
+        </div>
+    </div>
+
+    <div class="features-section">
+        <h2>Features of this Login System</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <h3>Secure Authentication</h3>
+                <p>Django's built-in authentication system ensures your data is protected.</p>
+            </div>
+            <div class="feature-card">
+                <h3>User Registration</h3>
+                <p>Easy registration process with email validation and password confirmation.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Dynamic UI</h3>
+                <p>Smooth animations and interactive elements for better user experience.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Session Management</h3>
+                <p>Automatic session handling with secure logout functionality.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
